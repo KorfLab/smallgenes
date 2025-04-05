@@ -45,6 +45,10 @@ Some software is required:
 
 ## C. elegans ##
 
+
+Note: this is copied over from datacore2024 and has not been validated yet
+
+
 In the lines below, `$DATA` is wherever you keep your data.
 
 ```bash
@@ -55,7 +59,7 @@ ln -s $DATA/c_elegans.PRJNA13758.WS282.annotations.gff3.gz gff3.gz
 gunzip -c gff3.gz | grep -E "WormBase|RNASeq" > ws282.gff3
 cd ..
 haman build/genome.gz build/ws282.gff3 pcg genes --issuesok --plus
-python3 gene_selector.py build/genes
+python3 src/gene_selector.py build/genes
 ```
 
 This results in 2 new file: `initial.genes.txt` and `initial.log.json`
@@ -64,7 +68,7 @@ Some of the genes are duplicates or near duplicates. The next step trims the
 set to be more unique.
 
 ```bash
-perl gene_reducer.pl
+perl src/gene_reducer.pl
 ```
 
 This results in the `smallgenes` directory, which has 1045 genes. The final
