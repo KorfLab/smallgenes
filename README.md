@@ -78,3 +78,10 @@ step is to rename the directory to the genome and create a tar-ball.
 mv smallgenes c.elegans.smallgenes
 tar -czf c.elegans.smallgenes.tar.gz c.elegans.smallgenes
 ```
+
+## D. melanogaster ##
+
+
+
+## A. thaliana ##
+
