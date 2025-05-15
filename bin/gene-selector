@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+import os
+
+from grimoire.sequence import DNA
+from grimoire.feature import Feature #, mRNA, Gene, FeatureTable
+from grimoire.genome import Reader
+from isoform2 import Locus, anti, read_splicemodel
+
+def protein_coding(genes, log):
+	keep = []
+	for gene in genes:
+		if gene.is_coding(): keep.append(gene)
+		else: log['non-coding'] += 1
+	return keep
+
+def has_introns(genes, log):
+	keep = []
+	for gene in genes:
+		introns = False
+		for tx in gene.transcripts():
+			if len(tx.introns) > 0:
+				introns = True
+				break
+		if introns: keep.append(gene)
+		else: log['not-spliced'] += 1
+	return keep
+
+def canonical_introns(genes, log):
+	keep = []
+	for gene in genes:
+		if gene.issues: log['non-canonical'] += 1
+		else: keep.append(gene)
+	return keep
+
+def not_too_long(genes, maxlen, log):
+	keep = []
+	for gene in genes:
+		if gene.length > maxlen: log['too-long'] += 1
+		else: keep.append(gene)
+	return keep
+
+def isolated(genes, log):
+	keep = []
+	for i in range(len(genes)):
+		overlap = False
+		for j in range(i+1, len(genes)):
+			if genes[i].overlap(genes[j]):
+				overlap = True
+				break
+		if overlap: log['gene-overlap'] += 1
+		else: keep.append(genes[i])
+	return keep
+
+def good_expression(genes, splice_count, minrna, log):
+	keep = []
+	rmax = dict()
+	for gene in genes:
+		max_splice = 0
+		intron_not_seen = False
+		for tx in gene.transcripts():
+			for intron in tx.introns:
+				sig = intron.beg, intron.end
+				if sig in splice_count:
+					if splice_count[sig] > max_splice:
+						max_splice = splice_count[sig]
+		if max_splice < minrna:
+			log['poor-expression'] += 1
+		else:
+			keep.append(gene)
+			rmax[gene.id] = max_splice
+	return keep, rmax
+
+def not_too_many_isoforms(genes, maxiso, log, verbose):
+	keep = []
+	icount = dict()
+	for gene in genes:
+		beg = gene.beg - arg.padding -1
+		end = gene.end + arg.padding -1
+		if gene.beg < 1 or gene.end >= len(chrom.seq): continue
+		seq = chrom.seq[beg:end+1]
+		if gene.strand == '-': seq = anti(seq)
+		loc = Locus('name', seq, model, limit=maxiso, countonly=True)
+		if loc.isocount >= maxiso:
+			if arg.verbose: print('>', end='', file=sys.stderr, flush=True)
+			log['too-complex'] += 1
+		else:
+			if arg.verbose: print('.', end='', file=sys.stderr, flush=True)
+			keep.append(gene)
+			icount[gene.id] = loc.isocount
+	if arg.verbose: print(file=sys.stderr, flush=True)
+	return keep, icount
+
+## Command line stuff ##
+
+parser = argparse.ArgumentParser(description='builds initial smallgenes set')
+parser.add_argument('fasta', type=str, metavar='<fasta>',
+	help='path to input fasta file')
+parser.add_argument('gff', type=str, metavar='<gff>',
+	help='path to input GFF3 (or similar) file')
+parser.add_argument('out', type=str, metavar='<out>',
+	help='output directory name')
+parser.add_argument('model', metavar='<model>',
+	help='splice model file [see isoforms project]')
+parser.add_argument('--rules', required=False, type=str, default='',
+	metavar='<str>', help='species-specific rules [%(default)s]') # not yet
+parser.add_argument('--padding', required=False, type=int, default=99,
+	metavar='<int>', help='no feature zone on each end [%(default)d]')
+parser.add_argument('--rnaseq', required=False, type=int, default=10000,
+	metavar='<int>', help='minimum RNASeq_splice count [%(default)d]')
+parser.add_argument('--maxgene', required=False, type=int, default=1000,
+	metavar='<int>', help='maximum gene length [%(default)d]')
+parser.add_argument('--isoforms', required=False, type=float, default=1,
+	metavar='<int>', help='maximum isoforms in millions [%(default)f]')
+parser.add_argument('--verbose', action='store_true')
+arg = parser.parse_args()
+
+if not os.path.exists(arg.out): os.mkdir(arg.out)
+
+model = read_splicemodel(arg.model)
+genome = Reader(gff=arg.gff, fasta=arg.fasta)
+maxiso = int(arg.isoforms * 1e6)
+idx = 0
+log = {
+	'smallgenes': 0,
+	'non-coding': 0,
+	'not-spliced': 0,
+	'non-canonical': 0,
+	'too-long': 0,
+	'gene-overlap': 0,
+	'poor-expression': 0,
+	'too-complex': 0,
+}
+
+for chrom in genome:
+	splice_count = {}
+	for f in chrom.ftable.features:
+		if f.source != 'RNASeq_splice': continue
+		splice_count[(f.beg, f.end)] = f.score
+	
+	genes = protein_coding(chrom.ftable.build_genes(), log)
+	genes = has_introns(genes, log)
+	genes = canonical_introns(genes, log)
+	genes = not_too_long(genes, arg.maxgene, log)
+	genes = isolated(genes, log)
+	genes, rmax = good_expression(genes, splice_count, arg.rnaseq, log)
+	genes, icount = not_too_many_isoforms(genes, maxiso, log, arg.verbose)
+	log['smallgenes'] += len(genes)
+	if arg.verbose: print(chrom.name, log, file=sys.stderr, flush=True)
+
+	
+	# create smaller gene
+	sources = {'WormBase', 'RNASeq_splice'}
+	for gene in genes:
+		beg = gene.beg - arg.padding -1
+		end = gene.end + arg.padding -1
+		if gene.beg < 1 or gene.end >= len(chrom.seq): continue
+
+		idx += 1
+
+		# fasta
+		name = f'ch.{idx}' # database name
+		seq = chrom.seq[beg:end+1]
+		rx = int(rmax[gene.id])
+		ic = icount[gene.id]
+		desc = f'{chrom.name}:{beg}-{end} {gene.strand} {gene.id} RNA={rx} ISO={ic}'
+		dna = DNA(name=name, seq=seq, desc=desc)
+
+		# gff
+		stuff = chrom.ftable.fetch(beg, end)
+		keep = []
+		gene.source = 'WormBase'
+		keep.append(gene)
+		for f in stuff:
+			# purge features in flanks
+			if f.beg < beg + arg.padding: continue
+			if f.end > end - arg.padding: continue
+			
+			# purge everything except WormBase and RNASeq_splice
+			if f.source not in sources: continue
+			
+			# purge all non-caonical splices from RNASeq_splice
+			if f.source == 'RNASeq_splice':
+				iseq = f.seq_str()
+				if iseq[0:2] != 'GT': continue
+				if iseq[-2:] != 'AG': continue
+			
+			keep.append(f)
+
+		# remap features to smaller sequence
+		for f in keep:
+			nbeg = f.beg - beg
+			nend = f.end - beg
+			dna.ftable.add_feature(Feature(dna, nbeg, nend,
+				f.strand, f.type, phase=f.phase,
+				score=f.score, source=f.source, id=f.id, pid=f.pid))
+
+		# convert to plus strand as necessary
+		if gene.strand == '-': dna.revcomp()
+
+		# output
+		ffp = open(f'{arg.out}/{name}.fa', 'w+')
+		ffp.write(dna.fasta())
+		ffp.close()
+
+		gfp = open(f'{arg.out}/{name}.gff3', 'w+')
+		for f in dna.ftable.features:
+			gfp.write(f.gff())
+			gfp.write('\n')
+		gfp.close()
