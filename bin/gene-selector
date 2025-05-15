@@ -162,7 +162,7 @@ for chrom in genome:
 		idx += 1
 
 		# fasta
-		name = f'ch.{idx}' # database name
+		name = f'sg.{idx}' # database name
 		seq = chrom.seq[beg:end+1]
 		rx = int(rmax[gene.id])
 		ic = icount[gene.id]

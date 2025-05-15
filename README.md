@@ -27,9 +27,9 @@ A smallgene _locus_ has the following features:
 - The gene is moderately to highly expressed (e.g. > 10,000 observed splices)
 - The splicing landscape isn't too complex (e.g. < 1M possible isoforms)
 - Some features are purged from the GFF
-	- Features in the flanking region
-	- RNA-Seq introns with non-canonical splice sites
-	- RNA-Seq introns from the opposite strand
+	- All features in the flanking region are removed
+	- RNA-Seq introns with non-canonical splice sites are removed
+	- RNA-Seq introns from the opposite strand are removed
 - The gene is not too similar to other genes in the set
 
 
