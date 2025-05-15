@@ -125,11 +125,11 @@ maxiso = int(arg.isoforms * 1e6)
 idx = 0
 log = {
 	'smallgenes': 0,
+	'gene-overlap': 0,
 	'non-coding': 0,
 	'not-spliced': 0,
 	'non-canonical': 0,
 	'too-long': 0,
-	'gene-overlap': 0,
 	'poor-expression': 0,
 	'too-complex': 0,
 }
@@ -187,6 +187,7 @@ for chrom in genome:
 				iseq = f.seq_str()
 				if iseq[0:2] != 'GT': continue
 				if iseq[-2:] != 'AG': continue
+				if f.strand != gene.strand: continue
 			
 			keep.append(f)
 

@@ -11,14 +11,27 @@ small genes for a variety of common genomes.
 
 A smallgene _locus_ has the following features:
 
-- The DNA is represented in a FASTA file
+- The DNA pf the locus is represented in a single FASTA file
 - The annotation is represented in a GFF3 file
-- There is 1 protein-coding gene whose length is short (e.g < 1000 bp)
+	- gene, mRNA, exon, RNASeq_splice are kept
+	- all other features are removed
+- There is only 1 gene in the region
 - The gene is flanked by a little genomic sequence (e.g. 99 bp)
-- The gene is moderately to highly expressed
-- All introns follow the GT-AG rule
-- Intron and exon lengths are not unusually short or long
+- The gene is protein-coding
+- At least 1 transcript is spliced
+- The gene has canonical features
+	- Introns follow the GT-AG rule
+	- CDS has normal start and stop codons
+	- The intron and exon lengths are not unusually short
+- The gene is not too long (e.g. < 1000 bp)
+- The gene is moderately to highly expressed (e.g. > 10,000 observed splices)
+- The splicing landscape isn't too complex (e.g. < 1M possible isoforms)
+- Some features are purged from the GFF
+	- Features in the flanking region
+	- RNA-Seq introns with non-canonical splice sites
+	- RNA-Seq introns from the opposite strand
 - The gene is not too similar to other genes in the set
+
 
 ## Genomes ##
 
