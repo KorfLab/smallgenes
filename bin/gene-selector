@@ -140,11 +140,12 @@ for chrom in genome:
 		if f.source != 'RNASeq_splice': continue
 		splice_count[(f.beg, f.end)] = f.score
 	
-	genes = protein_coding(chrom.ftable.build_genes(), log)
+	genes = chrom.ftable.build_genes()
+	genes = isolated(genes, log)
+	genes = protein_coding(genes, log)
 	genes = has_introns(genes, log)
 	genes = canonical_introns(genes, log)
 	genes = not_too_long(genes, arg.maxgene, log)
-	genes = isolated(genes, log)
 	genes, rmax = good_expression(genes, splice_count, arg.rnaseq, log)
 	genes, icount = not_too_many_isoforms(genes, maxiso, log, arg.verbose)
 	log['smallgenes'] += len(genes)
