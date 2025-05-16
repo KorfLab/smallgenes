@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 
-This is the old gene reducer that needs to be changed for he new build procedure
-
 use strict;
 use warnings;
 
+die "usage: $0 <smallgenes initial build dir>\n" unless @ARGV;
+
 my @genes;
-open(my $fh, "initial.genes.txt") or die;
+
 my %len;
 while (<$fh>) {
 	next if /^#/;
@@ -58,7 +58,7 @@ foreach my $in (sort {$a <=> $b} keys %out) {
 			$n++;
 		}
 	}
-	
+
 }
 
 sub swap_names {
