@@ -45,6 +45,7 @@ for fasta in glob.glob(f'{arg.initdir}/*.fa'):
 
 fasta = f'{arg.builddir}/init.fa'
 blast = f'{arg.builddir}/blast.out'
+os.system(f'mkdir -p {arg.builddir}')
 os.system(f'cat {arg.initdir}/*.fa > {fasta}')
 os.system(f'makeblastdb -in {fasta} -dbtype nucl')
 os.system(f'blastn -db {fasta} -query {fasta} -evalue 1e-20 -outfmt 6 >{blast}')

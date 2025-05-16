@@ -19,10 +19,12 @@ gunzip -c gff3.gz | grep -E "WormBase|RNASeq" > ws282.gff3
 ```
 
 This results in a directory `build/initial` that contains the initial
-smallgenes set. There may be some very close paralogs. To remove
-near-duplicates.
+smallgenes set. There may be some very close paralogs, so you need to remove
+duplicates with `gene-reducer`.
 
 ```
-../gene-reducer build/initial build/scratch build/smallgenes
-tar -czf smallgenes.tar.gz build/smallgenes
+../gene-reducer initial blast smallgenes
+tar -czf smallgenes.tar.gz smallgenes
+mv smallgenes.tar.gz ..
 ```
+
