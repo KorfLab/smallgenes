@@ -139,7 +139,7 @@ for chrom in genome:
 	for f in chrom.ftable.features:
 		if f.source != 'RNASeq_splice': continue
 		splice_count[(f.beg, f.end)] = f.score
-	
+
 	genes = chrom.ftable.build_genes()
 	genes = isolated(genes, log)
 	genes = protein_coding(genes, log)
@@ -151,7 +151,7 @@ for chrom in genome:
 	log['smallgenes'] += len(genes)
 	if arg.verbose: print(chrom.name, log, file=sys.stderr, flush=True)
 
-	
+
 	# create smaller gene
 	sources = {'WormBase', 'RNASeq_splice'}
 	for gene in genes:
@@ -172,23 +172,21 @@ for chrom in genome:
 		# gff
 		stuff = chrom.ftable.fetch(beg, end)
 		keep = []
-		gene.source = 'WormBase'
-		keep.append(gene)
 		for f in stuff:
 			# purge features in flanks
-			if f.beg < beg + arg.padding: continue
-			if f.end > end - arg.padding: continue
-			
+			if f.beg < beg + arg.padding -1: continue
+			if f.end > end - arg.padding +1: continue
+
 			# purge everything except WormBase and RNASeq_splice
 			if f.source not in sources: continue
-			
+
 			# purge all non-caonical splices from RNASeq_splice
 			if f.source == 'RNASeq_splice':
 				iseq = f.seq_str()
 				if iseq[0:2] != 'GT': continue
 				if iseq[-2:] != 'AG': continue
 				if f.strand != gene.strand: continue
-			
+
 			keep.append(f)
 
 		# remap features to smaller sequence

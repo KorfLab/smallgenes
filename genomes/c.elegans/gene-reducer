@@ -3,16 +3,45 @@
 import argparse
 import glob
 import os
+import sys
 
 from grimoire.genome import Reader
-import korflab
+
+def swap_n_copy(d1, n1, d2, n2, ext):
+	with open(f'{d1}/{n1}.{ext}') as inf, open(f'{d2}/{n2}.{ext}', 'w') as ofh:
+		for line in inf:
+			line = line.replace(n1, n2)
+			print(line, end='', file=ofh)
 
 ## Command line stuff ##
 
 parser = argparse.ArgumentParser(description='de-parlogs initial smallgenes')
 parser.add_argument('initdir')
 parser.add_argument('builddir')
+parser.add_argument('outdir')
+parser.add_argument('--pctid', type=float, default=90,
+	help='min percent identity to remove [%(default).1f]')
+parser.add_argument('--pctlen', type=float, default=50,
+	help='min percent alignment length to remove [%(default).1f')
 arg = parser.parse_args()
+
+# Get information about each gene
+
+seqinfo = {}
+for fasta in glob.glob(f'{arg.initdir}/*.fa'):
+	gff = fasta[:-2] + 'gff3'
+	genome = Reader(fasta=fasta, gff=gff)
+	chrom = next(genome)
+	loc, st, wb, rna, iso = chrom.desc.split()
+	gene = chrom.ftable.build_genes()[0]
+	seqinfo[chrom.name] = {
+		'expression': int(rna.split('=')[1]),
+		'isoforms': int(iso.split('=')[1]),
+		'introns': len(gene.transcripts()[0].introns),
+		'len': len(chrom.seq)
+	}
+
+# Run BLAST to identify paralogs
 
 fasta = f'{arg.builddir}/init.fa'
 blast = f'{arg.builddir}/blast.out'
@@ -20,10 +49,33 @@ os.system(f'cat {arg.initdir}/*.fa > {fasta}')
 os.system(f'makeblastdb -in {fasta} -dbtype nucl')
 os.system(f'blastn -db {fasta} -query {fasta} -evalue 1e-20 -outfmt 6 >{blast}')
 
-"""
-for fasta in glob.glob(f'{arg.initdir}/*.fa'):
-	gff = fasta[:-2] + 'gff3'
-	genome = Reader(fasta=fasta, gff=gff)
-	chrom = next(genome)
-	print(chrom.name, chrom.desc)
-"""
+# Remove paralogs
+
+kill = set()
+with open(blast) as fp:
+	for line in fp:
+		f = line.split()
+		query, sbjct, pct, alen, mm, go, qb, qe, sb, se, e, s = line.split()
+		qb, qe, sb, se = int(qb), int(qe), int(sb), int(se)
+		if query == sbjct: continue
+		if query in kill: continue
+		alen = int(alen)
+		apct = max(alen/seqinfo[query]['len'], alen/seqinfo[sbjct]['len'])*100
+		pct = float(pct)
+		if pct > arg.pctid and apct > arg.pctlen: kill.add(sbjct)
+print('removed', len(kill), 'paralogs', file=sys.stderr)
+for sgid in kill: del seqinfo[sgid]
+
+# Create smallgenes
+
+print(len(seqinfo), 'smallgenes', file=sys.stderr)
+sgenes = sorted(seqinfo.items(), key=lambda x:
+	(x[1]['introns'], x[1]['isoforms'], x[1]['len'], x[1]['expression']))
+
+os.system(f'mkdir -p {arg.outdir}')
+for introns in range(1, 10):
+	genes = [x for x in sgenes if x[1]['introns'] == introns]
+	for rank, (iid, d) in enumerate(genes):
+		sgid = f'ce.{introns}.{rank}'
+		swap_n_copy(arg.initdir, iid, arg.outdir, sgid, 'fa')
+		swap_n_copy(arg.initdir, iid, arg.outdir, sgid, 'gff3')

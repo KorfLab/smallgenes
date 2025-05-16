@@ -7,15 +7,16 @@ Small eukaryotic genes in small genomic contexts.
 
 Genes and genomes can vary in size from small to HUGE. Smaller genes are useful
 for development, testing, and tutorials. This project seeks to create a set of
-small genes for a variety of common genomes.
+small genes for a variety of common genomes. The primary aim of the project is
+the isoforms project.
 
 A smallgene _locus_ has the following features:
 
-- The DNA pf the locus is represented in a single FASTA file
-- The annotation is represented in a GFF3 file
-	- gene, mRNA, exon, RNASeq_splice are kept
+- The DNA of the locus is represented in a single FASTA file
+- The annotation is represented in a single GFF3 file
+	- gene, mRNA, exon, UTRs, and spliced RNA-Seq are kept
 	- all other features are removed
-- There is only 1 gene in the region
+- There is only 1 gene in the region (no gene overlaps, not even ncRNAs)
 - The gene is flanked by a little genomic sequence (e.g. 99 bp)
 - The gene is protein-coding
 - At least 1 transcript is spliced
@@ -37,64 +38,5 @@ A smallgene _locus_ has the following features:
 
 Initial smallgene sets are built for the following genomes.
 
-- A. thaliana
-- C. elegans
-- D. melanogaster
-
-## Build Procedure ##
-
-The build procedure for each genome requires some customization due to
-differences in the way each community represents its GFF.
-
-Some software is required:
-
-- git clone KorfLab/grimoire
-	- add `grimoire/grimoire` to your PYTHONPATH
-	- add `grimoire/haman` to your PATH
-- git clone KorfLab/isoforms
-	-add `isoforms` to your PYTHONPATH
-- install `blastn` (e.g. via mini-conda)
-
-
-## C. elegans ##
-
-
-Note: this is copied over from datacore2024 and has not been validated yet
-
-
-In the lines below, `$DATA` is wherever you keep your data.
-
-```bash
-mkdir build
-cd build
-ln -s $DATA/c_elegans.PRJNA13758.WS282.genomic.fa.gz genome.gz
-ln -s $DATA/c_elegans.PRJNA13758.WS282.annotations.gff3.gz gff3.gz
-gunzip -c gff3.gz | grep -E "WormBase|RNASeq" > ws282.gff3
-cd ..
-haman build/genome.gz build/ws282.gff3 pcg genes --issuesok --plus
-python3 src/gene_selector.py build/genes
-```
-
-This results in 2 new file: `initial.genes.txt` and `initial.log.json`
-
-Some of the genes are duplicates or near duplicates. The next step trims the
-set to be more unique.
-
-```bash
-perl src/gene_reducer.pl
-```
-
-This results in the `smallgenes` directory, which has 1045 genes. The final
-step is to rename the directory to the genome and create a tar-ball.
-
-```bash
-mv smallgenes c.elegans.smallgenes
-tar -czf c.elegans.smallgenes.tar.gz c.elegans.smallgenes
-```
-
-## D. melanogaster ##
-
-
-
-## A. thaliana ##
+- C. elegans - see `genomes/c.elegans` for build procedure
 
