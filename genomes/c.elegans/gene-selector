@@ -112,7 +112,7 @@ parser.add_argument('--rnaseq', required=False, type=int, default=10000,
 	metavar='<int>', help='minimum RNASeq_splice count [%(default)d]')
 parser.add_argument('--maxgene', required=False, type=int, default=1000,
 	metavar='<int>', help='maximum gene length [%(default)d]')
-parser.add_argument('--isoforms', required=False, type=float, default=1,
+parser.add_argument('--isoforms', required=False, type=float, default=10,
 	metavar='<int>', help='maximum isoforms in millions [%(default)f]')
 parser.add_argument('--verbose', action='store_true')
 arg = parser.parse_args()
