@@ -173,6 +173,9 @@ for chrom in genome:
 		stuff = chrom.ftable.fetch(beg, end)
 		keep = []
 		for f in stuff:
+			# purge wrong strand
+			if f.strand != gene.strand: continue
+		
 			# purge features in flanks
 			if f.beg < beg + arg.padding -1: continue
 			if f.end > end - arg.padding +1: continue
@@ -185,7 +188,6 @@ for chrom in genome:
 				iseq = f.seq_str()
 				if iseq[0:2] != 'GT': continue
 				if iseq[-2:] != 'AG': continue
-				if f.strand != gene.strand: continue
 
 			keep.append(f)
 
